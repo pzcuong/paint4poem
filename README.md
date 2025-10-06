@@ -31,7 +31,7 @@ Download the [complete data](https://drive.google.com/drive/folders/1ySx3xTq1Lza
 - Pre-train DAMSM models:
 
 For an end-to-end, notebook-based walkthrough of these steps see [`AttnGAN/notebooks/attngan_training_and_inference.ipynb`](AttnGAN/notebooks/attngan_training_and_inference.ipynb).
-If you need a single Kaggle-friendly notebook that recreates the entire AttnGAN source tree at runtime, use [`AttnGAN/notebooks/attngan_full_source_bundle.ipynb`](AttnGAN/notebooks/attngan_full_source_bundle.ipynb).
+If you need a single Kaggle-friendly notebook that recreates the entire AttnGAN source tree at runtime, use [`AttnGAN/notebooks/attngan_full_source_bundle.ipynb`](AttnGAN/notebooks/attngan_full_source_bundle.ipynb). When preparing datasets in Kaggle, call `preprocess_data.py` with `--data_dir /kaggle/input/<dataset>/poem-to-image` (or point to your CSV/text directory) or pass `--cfg <config.yml>` so the script can infer the correct location.
   - For poem dataset: `python pretrain_DAMSM.py --cfg cfg/DAMSM/zikai_poem.yml --gpu 0`
   - For caption dataset: `python pretrain_DAMSM.py --cfg cfg/DAMSM/zikai_title.yml --gpu 1`
  
