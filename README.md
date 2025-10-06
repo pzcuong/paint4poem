@@ -29,6 +29,8 @@ Download the [complete data](https://drive.google.com/drive/folders/1ySx3xTq1Lza
 
 ### Training
 - Pre-train DAMSM models:
+
+For an end-to-end, notebook-based walkthrough of these steps see [`AttnGAN/notebooks/attngan_training_and_inference.ipynb`](AttnGAN/notebooks/attngan_training_and_inference.ipynb).
   - For poem dataset: `python pretrain_DAMSM.py --cfg cfg/DAMSM/zikai_poem.yml --gpu 0`
   - For caption dataset: `python pretrain_DAMSM.py --cfg cfg/DAMSM/zikai_title.yml --gpu 1`
  
