@@ -1,11 +1,61 @@
+import argparse
 import csv
 import os
-import numpy as np
-import re
 import pickle
-import argparse
+import re
+from typing import Optional
+
+import numpy as np
 from nltk.tokenize import RegexpTokenizer
-import random
+
+
+def _extract_data_dir(cfg_path: str) -> str:
+    """Return the DATA_DIR value from a simple YAML config."""
+    with open(cfg_path, encoding='utf-8') as cfg_file:
+        for raw_line in cfg_file:
+            line = raw_line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if line.startswith('DATA_DIR'):
+                _, value = line.split(':', 1)
+                value = value.strip().strip("'\"")
+                if not value:
+                    break
+                return value
+    raise ValueError(f"Could not find DATA_DIR in config: {cfg_path}")
+
+
+def _resolve_data_dir(data_dir: Optional[str], cfg: Optional[str]) -> str:
+    if cfg:
+        resolved = _extract_data_dir(cfg)
+        if data_dir and data_dir != resolved:
+            print(f"Overriding DATA_DIR from config ({resolved}) with CLI value: {data_dir}")
+            return os.path.expanduser(data_dir)
+        return os.path.expanduser(resolved)
+    if not data_dir:
+        raise ValueError('A dataset directory must be provided via --data_dir or --cfg.')
+    return os.path.expanduser(data_dir)
+
+
+def _maybe_find_metadata_csv(data_dir: str) -> Optional[str]:
+    """Return a metadata CSV filename if one exists in the dataset directory."""
+    candidates = ['TITLE-IMAGE.csv', 'POEM-IMAGE.csv']
+    for candidate in candidates:
+        candidate_path = os.path.join(data_dir, candidate)
+        if os.path.isfile(candidate_path):
+            return candidate
+
+    try:
+        for entry in os.listdir(data_dir):
+            upper = entry.upper()
+            if upper.startswith('TITLE-IMAGE') and entry.lower().endswith('.csv'):
+                return entry
+            if upper.startswith('POEM-IMAGE') and entry.lower().endswith('.csv'):
+                return entry
+    except FileNotFoundError:
+        pass
+    return None
+
 
 def title_image_prep(data_dir, csv_name):
     text_path = os.path.join(data_dir, 'text')
@@ -13,8 +63,8 @@ def title_image_prep(data_dir, csv_name):
         os.makedirs(text_path)
 
     max_lth = 0
-    lth_ls = []## length of lists
-    with open(os.path.join(data_dir, csv_name),encoding="utf8") as csv_file:
+    lth_ls = []  # length of lists
+    with open(os.path.join(data_dir, csv_name), encoding='utf8') as csv_file:
         csv_reader = csv.reader(csv_file, delimiter=',')
         next(csv_reader)
         files = []
@@ -38,7 +88,7 @@ def title_image_prep(data_dir, csv_name):
                     print(index, tokens)
                 else:
                     files.append(file)
-                    with open(text_path + '/' + file + '.txt', "w",encoding='utf-8') as txt:
+                    with open(text_path + '/' + file + '.txt', 'w', encoding='utf-8') as txt:
                         txt.write(cap)
             elif cap == '':
                 cnt_empty += 1
@@ -51,21 +101,25 @@ def title_image_prep(data_dir, csv_name):
     print(max_lth)
     return files
 
+
 def main(args):
-    train_path = os.path.join(args.data_dir, 'train')
+    data_dir = os.path.abspath(args.data_dir)
+    print(f"Using dataset directory: {data_dir}")
+
+    train_path = os.path.join(data_dir, 'train')
     if not os.path.isdir(train_path):
         os.makedirs(train_path)
 
-    test_path = os.path.join(args.data_dir, 'test')
+    test_path = os.path.join(data_dir, 'test')
     if not os.path.isdir(test_path):
         os.makedirs(test_path)
 
-    if args.data_dir == '../data/Paint4Poem-Zikai-caption-subset/title_image':
-        filenames = title_image_prep(args.data_dir, 'TITLE-IMAGE.csv')
-    elif args.data_dir == '../data/Paint4Poem-Zikai-poem-subset/poem_image':
-        filenames = title_image_prep(args.data_dir, 'POEM-IMAGE.csv')
+    csv_name = _maybe_find_metadata_csv(data_dir)
+    if csv_name:
+        print(f"Found metadata CSV '{csv_name}'. Generating text splits from CSV contents.")
+        filenames = title_image_prep(data_dir, csv_name)
     else:
-        filenames = os.listdir(os.path.join(args.data_dir, 'text'))
+        filenames = os.listdir(os.path.join(data_dir, 'text'))
         filenames = [name.rpartition('.txt')[0] for name in filenames]
 
     print('total amount of data: {}'.format(len(filenames)))
@@ -90,6 +144,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', dest='data_dir', type=str, default='../data/Paint4Poem-Zikai-poem-subset/poem_image')
+    parser.add_argument('--data_dir', dest='data_dir', type=str, default=None,
+                        help='Path to the dataset directory containing text/ and image folders.')
+    parser.add_argument('--cfg', dest='cfg', type=str, default=None,
+                        help='Optional YAML config file that specifies DATA_DIR.')
     args = parser.parse_args()
+    args.data_dir = _resolve_data_dir(args.data_dir, args.cfg)
     main(args)
